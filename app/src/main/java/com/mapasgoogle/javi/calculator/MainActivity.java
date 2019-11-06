@@ -10,6 +10,8 @@ import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.TextView;
 
+import javax.security.auth.login.LoginException;
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private TextView textViewBox;
@@ -33,6 +35,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button buttonSum;
     private Button buttonEqu;
     private Button buttonDec;
+    private Button buttonRC;
 
     private RadioButton radioBinario;
     private RadioButton radioDecimal;
@@ -78,6 +81,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         buttonDec = (Button) findViewById(R.id.btDec);
         buttonEqu = (Button) findViewById(R.id.btEqu);
 
+        buttonRC = (Button) findViewById(R.id.btRC);
         radioBinario = (RadioButton) findViewById(R.id.rdoBinario);
         radioDecimal = (RadioButton) findViewById(R.id.rdoDecimal);
         radioOctal = (RadioButton) findViewById(R.id.rdoOctal);
@@ -103,6 +107,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         button9.setOnClickListener(this);
         buttonDec.setOnClickListener(this);
         buttonEqu.setOnClickListener(this);
+        buttonRC.setOnClickListener(this);
 
         radioBinario.setOnClickListener(this);
         radioDecimal.setOnClickListener(this);
@@ -182,9 +187,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.btSum:
                 configureOperation("sum", buttonSum);
                 break;
+            case R.id.btRC:
+                configureOperation("rc", buttonRC);
+                break;
             default:// Boton igual
                 if(operation.getOperation1() != null){
-                   Log.i(null, stringResult);
                     checkOperation();
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -193,12 +200,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     buttonPro.setBackground(getDrawable(R.drawable.button_secundary_no_pressed));
                     buttonRes.setBackground(getDrawable(R.drawable.button_secundary_no_pressed));
                     buttonSum.setBackground(getDrawable(R.drawable.button_secundary_no_pressed));
+                    buttonRC.setBackground(getDrawable(R.drawable.button_secundary_no_pressed));
                 }
                 markNum2 = false;
                 lastPressedKey = "=";
                 break;
         }
-        Log.i(null, stringResult);
         textViewBox.setText(stringResult);
     }
 
@@ -224,29 +231,54 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    /***
+    /**
      * Realiza la operacion
+     * Haciendo conversiones segun la base en la que estemos.
      */
     private void checkOperation() {
         if(operation.getOperation1() != null && operation.getNumberTwo() != 0.0){
             // Realizo operacion
+
+            // Convertir los numeros segun en la base que nos encontremos
+            double numUno, numDos, numResult = 0;
+            if (base != 10){
+                numUno = Integer.parseInt(String.valueOf((int)operation.getNumberOne()), base);
+                numDos = Integer.parseInt(String.valueOf((int)operation.getNumberTwo()), base);
+            } else {
+                numUno = operation.getNumberOne();
+                numDos = operation.getNumberTwo();
+            }
+
             switch (operation.getOperation1()){
                 case "sum":
-                    stringResult = String.valueOf(operation.operationSum(operation.getNumberOne(), operation.getNumberTwo()));
+                    numResult = operation.operationSum(numUno, numDos);
                     break;
                 case "res":
-                    stringResult = String.valueOf(operation.operationDeduct(operation.getNumberOne(), operation.getNumberTwo()));
+                    numResult = operation.operationDeduct(numUno, numDos);
                     break;
                 case "prod":
-                    stringResult = String.valueOf(operation.operationProduct(operation.getNumberOne(), operation.getNumberTwo()));
+                    numResult = operation.operationProduct(numUno, numDos);
                     break;
                 case "div":
-                    stringResult = String.valueOf(operation.operationDivision(operation.getNumberOne(), operation.getNumberTwo()));
+                    numResult = operation.operationDivision(numUno, numDos);
                     break;
                 case "porc":
-                    stringResult = String.valueOf(operation.operationPorcentage(operation.getNumberOne(), operation.getNumberTwo()));
+                    numResult = operation.operationPorcentage(numUno, numDos);
+                    break;
+                case "rc":
+                    numResult = operation.operationRaizCuadrada(numDos);
                     break;
             }
+
+            /* El resultado lo convertimos segun en la base que nos enconremos. Si es base 10, no realiza ningun cambio, si es otra base
+               distinta, converte el numResult en la base correspondiente. */
+
+            if (base != 10){
+                stringResult = Integer.toString((int)numResult, base);
+            } else {
+                stringResult = String.valueOf(numResult);
+            }
+
             if(stringResult.substring(stringResult.length()-1, stringResult.length()).equals("0") &&
                     stringResult.substring(stringResult.length()-2, stringResult.length()-1).equals(".")){
                 stringResult = stringResult.replace(".0", "");
@@ -257,8 +289,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             deleteCeros();
         }
 
+        /* Te actualiza el numUno con el primer resultado de numUno y numTwo
+         * para seguir haciendo calculos con el resultado de la operacion anterior */
         num1 = stringResult;
-        operation.setNumberOne(Double.parseDouble(num1));
+        operation.setNumberOne(Double.parseDouble(num1)); //////////// Areglar numero uno para pasarlo a decimal
         nextMark = false;
         markNum2 = true;
 
@@ -347,15 +381,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         if(markNum2){
             stringResult += num2;
-            int result = Integer.parseInt(stringResult, base);
-            insertNumberOperation((double)result);
-            Log.i(null, String.valueOf(result));
+            insertNumberOperation(Double.parseDouble(stringResult));
             if(s.equals(",")) stringResult = stringResult.substring(0, stringResult.length()-1);
         }else{
             stringResult += num1;
-            int result = Integer.parseInt(stringResult, base);
-            insertNumberOperation((double)result);
-            Log.i(null, String.valueOf(result));
+            insertNumberOperation(Double.parseDouble(stringResult));
             if(s.equals(",")) stringResult = stringResult.substring(0, stringResult.length()-1);
         }
 
@@ -413,6 +443,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
+    /**
+     * Actualiza el estado de los botones segun en la base seleccionada.
+     */
     public void actualizarBotones(){
         button2.setEnabled(base > 2);
         button3.setEnabled(base > 2);
@@ -425,6 +458,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         buttonDec.setEnabled(base == 10);
         buttonMM.setEnabled(base == 10);
         buttonPorc.setEnabled(base == 10);
+        buttonRC.setEnabled(base == 10);
         cleanAll();
     }
 

@@ -62,4 +62,8 @@ public class Operation {
         return (n1/100*n2);
     }
 
+    double operationRaizCuadrada(double n1){
+        return Math.sqrt(n1);
+    }
+
 }
